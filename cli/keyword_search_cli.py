@@ -1,16 +1,25 @@
 #!/usr/bin/env python3
 
-import argparse, json
+import argparse, json, string
 
 def find_movies(keyword):
     movies =[]
+    found_token = False
     with open("data/movies.json", "r") as file:
         data = json.load(file)
 
         for movie in data["movies"]:
-            if keyword.lower() in movie["title"].lower():
-                movies.append(movie["title"])
-
+            keyword_tokens = keyword.lower().translate(str.maketrans("", "", string.punctuation)).split()
+            movie_tokens = movie["title"].lower().translate(str.maketrans("", "", string.punctuation)).split()
+            for keyword_token in keyword_tokens:
+                for movie_token in movie_tokens:
+                    if keyword_token in movie_token:
+                        movies.append(movie["title"])
+                        found_token = True
+                        break
+                if found_token:
+                    found_token = False
+                    break
     
     return movies
 
