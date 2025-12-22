@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
 
-import argparse, json, string
+import argparse, json, string, io
+
+def get_stopwords():
+    with open("data/stopwords.txt", "r") as file:
+        return file.read().splitlines()
 
 def find_movies(keyword):
     movies =[]
     found_token = False
+
+    stopwords = get_stopwords()
+
     with open("data/movies.json", "r") as file:
         data = json.load(file)
 
@@ -13,7 +20,7 @@ def find_movies(keyword):
             movie_tokens = movie["title"].lower().translate(str.maketrans("", "", string.punctuation)).split()
             for keyword_token in keyword_tokens:
                 for movie_token in movie_tokens:
-                    if keyword_token in movie_token:
+                    if keyword_token in movie_token and keyword_token not in stopwords:
                         movies.append(movie["title"])
                         found_token = True
                         break
