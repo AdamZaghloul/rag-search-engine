@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-import argparse, json, string, io
+import argparse, json, string
+from nltk.stem import PorterStemmer
 
 def get_stopwords():
     with open("data/stopwords.txt", "r") as file:
@@ -14,9 +15,16 @@ def find_movies(keyword):
 
     with open("data/movies.json", "r") as file:
         data = json.load(file)
+        stemmer = PorterStemmer()
+
+        keyword_tokens_temp = keyword.lower().translate(str.maketrans("", "", string.punctuation)).split()
+        keyword_tokens = []
+
+        for keyword in keyword_tokens_temp:
+            if keyword not in stopwords:
+                keyword_tokens.append(stemmer.stem(keyword))
 
         for movie in data["movies"]:
-            keyword_tokens = keyword.lower().translate(str.maketrans("", "", string.punctuation)).split()
             movie_tokens = movie["title"].lower().translate(str.maketrans("", "", string.punctuation)).split()
             for keyword_token in keyword_tokens:
                 for movie_token in movie_tokens:
