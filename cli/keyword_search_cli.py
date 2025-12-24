@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import argparse, json, string
+import argparse, json, string, InvertedIndex
 from nltk.stem import PorterStemmer
 
 def get_stopwords():
@@ -44,6 +44,7 @@ def main() -> None:
 
     search_parser = subparsers.add_parser("search", help="Search movies using BM25")
     search_parser.add_argument("query", type=str, help="Search query")
+    search_parser = subparsers.add_parser("build", help="Build the inverted index for movie searches")
 
     args = parser.parse_args()
 
@@ -58,6 +59,14 @@ def main() -> None:
                 print(f"{i}. {movie}")
                 i += 1
 
+            pass
+        
+        case "build":
+            index = InvertedIndex.InvertedIndex()
+            index.build()
+            index.save()
+
+            print(f"First document for token 'merida' = {index.get_documents('merida')[0]}")
             pass
         case _:
             parser.print_help()
