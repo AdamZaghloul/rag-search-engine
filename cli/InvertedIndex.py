@@ -1,11 +1,12 @@
 import json, pickle, os
+from keyword_search_cli import tokenize_text
 
 class InvertedIndex:
     index = {}
     docmap = {}
 
     def __add_document(self, doc_id, text):
-        tokens = text.lower().split()
+        tokens = tokenize_text(text)
 
         for token in tokens:
             if token in self.index:
@@ -21,6 +22,7 @@ class InvertedIndex:
             data = json.load(file)
 
             for movie in data["movies"]:
+                self.docmap[movie["id"]] = movie
                 self.__add_document(movie["id"], f"{movie['title']} {movie['description']}")
     
     def save(self):
@@ -33,3 +35,14 @@ class InvertedIndex:
 
         with open("cache/docmap.pkl", "wb") as file:
             pickle.dump(self.docmap, file)
+    
+    def load(self):
+
+        if not os.path.isfile("cache/index.pkl") or not os.path.isfile("cache/docmap.pkl"):
+            raise Exception("Pickle files for index and docmap not found.")
+            
+        with open("cache/index.pkl", "rb") as file:
+            self.index = pickle.load(file)
+
+        with open("cache/docmap.pkl", "rb") as file:
+            self.docmap = pickle.load(file)
