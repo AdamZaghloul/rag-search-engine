@@ -1,11 +1,11 @@
-import json, pickle, os
+import json, pickle, os, math
 from keyword_search_cli import tokenize_text
-from collections import Counter
+from collections import Counter, defaultdict
 
 class InvertedIndex:
 
     def __init__(self):
-        self.index = {}
+        self.index = defaultdict(set)
         self.docmap = {}
         self.term_frequencies = {}
 
@@ -13,11 +13,7 @@ class InvertedIndex:
         tokens = tokenize_text(text)
 
         for token in tokens:
-            if token in self.index:
-                self.index[token].append(doc_id)
-            else:
-                self.index[token] = [doc_id]
-
+            self.index[token].add(doc_id)
             self.term_frequencies[doc_id][token] += 1
 
     def get_documents(self,term):
@@ -72,3 +68,22 @@ class InvertedIndex:
                 return freq[token[0]]
         
         return 0
+    
+    def get_idf(self, term):
+
+        token = tokenize_text(term)
+
+        if len(token) > 1:
+            raise Exception("Too Many Tokens")
+        
+        token = token[0]
+
+        total_doc_count = len(self.docmap)
+        term_match_doc_count = 0
+
+        if token in self.index:
+            term_match_doc_count = len(self.index[token])
+
+        idf = math.log((total_doc_count + 1) / (term_match_doc_count + 1))
+
+        return idf

@@ -49,10 +49,19 @@ def main() -> None:
 
     search_parser = subparsers.add_parser("search", help="Search movies using BM25")
     search_parser.add_argument("query", type=str, help="Search query")
+
     build_parser = subparsers.add_parser("build", help="Build the inverted index for movie searches")
+
     tf_parser = subparsers.add_parser("tf", help="See the term frequency for a given doc_id and a given term")
     tf_parser.add_argument("doc_id", type=int, help="Document ID")
     tf_parser.add_argument("term", type=str, help="Search term")
+
+    idf_parser = subparsers.add_parser("idf", help="See the inverse document frequency for a given term")
+    idf_parser.add_argument("term", type=str, help="Search term")
+
+    tfidf_parser = subparsers.add_parser("tfidf", help="See the tf-idf score for a given term in a given document")
+    tfidf_parser.add_argument("doc_id", type=int, help="Document ID")
+    tfidf_parser.add_argument("term", type=str, help="Search term")
 
     args = parser.parse_args()
 
@@ -89,6 +98,41 @@ def main() -> None:
             try:
                 index.load()
                 print(index.get_tf(args.doc_id, args.term))
+            except Exception as e:
+                print(e)
+                return
+            
+            pass
+
+        case "idf":
+
+            index = InvertedIndex.InvertedIndex()
+
+            try:
+                index.load()
+                
+                idf = index.get_idf(args.term)
+                print(f"Inverse document frequency of '{args.term}': {idf:.2f}")
+
+            except Exception as e:
+                print(e)
+                return
+            
+            pass
+
+        case "tfidf":
+
+            index = InvertedIndex.InvertedIndex()
+
+            try:
+                index.load()
+
+                tf = index.get_tf(args.doc_id, args.term)
+                idf = index.get_idf(args.term)
+
+                tf_idf = tf * idf
+                print(f"TF-IDF score of '{args.term}' in document '{args.doc_id}': {tf_idf:.2f}")
+
             except Exception as e:
                 print(e)
                 return
