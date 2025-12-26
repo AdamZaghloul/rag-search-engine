@@ -1,9 +1,13 @@
 import json, pickle, os
 from keyword_search_cli import tokenize_text
+from collections import Counter
 
 class InvertedIndex:
-    index = {}
-    docmap = {}
+
+    def __init__(self):
+        self.index = {}
+        self.docmap = {}
+        self.term_frequencies = {}
 
     def __add_document(self, doc_id, text):
         tokens = tokenize_text(text)
@@ -14,6 +18,8 @@ class InvertedIndex:
             else:
                 self.index[token] = [doc_id]
 
+            self.term_frequencies[doc_id][token] += 1
+
     def get_documents(self,term):
         return sorted(self.index[term.lower()])
     
@@ -23,6 +29,7 @@ class InvertedIndex:
 
             for movie in data["movies"]:
                 self.docmap[movie["id"]] = movie
+                self.term_frequencies[movie["id"]] = Counter()
                 self.__add_document(movie["id"], f"{movie['title']} {movie['description']}")
     
     def save(self):
@@ -35,6 +42,9 @@ class InvertedIndex:
 
         with open("cache/docmap.pkl", "wb") as file:
             pickle.dump(self.docmap, file)
+
+        with open("cache/term_frequencies.pkl", "wb") as file:
+            pickle.dump(self.term_frequencies, file)
     
     def load(self):
 
@@ -46,3 +56,19 @@ class InvertedIndex:
 
         with open("cache/docmap.pkl", "rb") as file:
             self.docmap = pickle.load(file)
+
+        with open("cache/term_frequencies.pkl", "rb") as file:
+            self.term_frequencies = pickle.load(file)
+    
+    def get_tf(self, doc_id, term):
+        token = tokenize_text(term)
+
+        if len(token) > 1:
+            raise Exception("Too Many Tokens")
+        
+        if doc_id in self.term_frequencies:
+            freq = self.term_frequencies[doc_id]
+            if token[0] in freq:
+                return freq[token[0]]
+        
+        return 0
