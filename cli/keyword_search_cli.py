@@ -2,6 +2,7 @@
 
 import argparse, json, string, InvertedIndex
 from nltk.stem import PorterStemmer
+from constants import *
 
 def get_stopwords():
     with open("data/stopwords.txt", "r") as file:
@@ -62,6 +63,19 @@ def main() -> None:
     tfidf_parser = subparsers.add_parser("tfidf", help="See the tf-idf score for a given term in a given document")
     tfidf_parser.add_argument("doc_id", type=int, help="Document ID")
     tfidf_parser.add_argument("term", type=str, help="Search term")
+
+    bm25idf_parser = subparsers.add_parser("bm25idf", help="See the BM25 inverse document frequency for a given term")
+    bm25idf_parser.add_argument("term", type=str, help="Search term")
+
+    bm25tf_parser = subparsers.add_parser("bm25tf", help="See the BM25 term frequency for a given doc_id and a given term")
+    bm25tf_parser.add_argument("doc_id", type=int, help="Document ID")
+    bm25tf_parser.add_argument("term", type=str, help="Search term")
+    bm25tf_parser.add_argument("k1", type=float, nargs='?', default=BM25_K1, help="Tunable BM25 K1 parameter")
+    bm25tf_parser.add_argument("b", type=float, nargs='?', default=BM25_B, help="Tunable BM25 B parameter")
+
+    bm25search_parser = subparsers.add_parser("bm25search", help="Search movies using full BM25 scoring")
+    bm25search_parser.add_argument("query", type=str, help="Search query")
+    bm25search_parser.add_argument("limit", type=int, nargs='?', default=5, help="Optional maximum number of results.")
 
     args = parser.parse_args()
 
@@ -137,6 +151,51 @@ def main() -> None:
                 print(e)
                 return
             
+            pass
+
+        case "bm25idf":
+            index = InvertedIndex.InvertedIndex()
+
+            try:
+                index.load()
+                
+                bm25idf = index.get_bm25_idf(args.term)
+                print(f"BM25 IDF score of '{args.term}': {bm25idf:.2f}")
+
+            except Exception as e:
+                print(e)
+                return
+            
+            pass
+
+        case "bm25search":
+            index = InvertedIndex.InvertedIndex()
+
+            try:
+                index.load()
+                results = index.bm25_search(args.query)
+                
+                i = 1
+                for key in results:
+                    print(f"{i}. ({key}) {index.docmap[key]['title']} - {results[key]:.2f}")
+                    i += 1
+
+            except Exception as e:
+                print(e)
+                return
+            pass
+
+        case "bm25tf":
+
+            index = InvertedIndex.InvertedIndex()
+
+            try:
+                index.load()
+                bm25tf = index.get_bm25_tf(args.doc_id, args.term, args.k1)
+                print(f"BM25 TF score of '{args.term}' in document '{args.doc_id}': {bm25tf:.2f}")
+            except Exception as e:
+                print(e)
+                return
             pass
 
         case _:
