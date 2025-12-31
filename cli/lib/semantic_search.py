@@ -218,19 +218,22 @@ class ChunkedSemanticSearch(SemanticSearch):
                 if chunk_score["score"] > movie_scores[chunk_score["movie_idx"]]:
                     movie_scores[chunk_score["movie_idx"]] = chunk_score["score"]
 
-        chunk_scores.sort(key = lambda x: x["score"], reverse=True)
+        movie_scores = dict(sorted(movie_scores.items(), key=lambda item: item[1], reverse=True))
 
         results = []
         result_len = limit
-        if len(chunk_scores) < limit:
-            result_len = len(chunk_scores)
+        if len(movie_scores) < limit:
+            result_len = len(movie_scores)
+        
+        movie_id_list = list(movie_scores.keys())
+        movie_score_list = list(movie_scores.values())
 
         for i in range(result_len):
             dic = {}
-            dic["id"] = chunk_scores[i]["movie_idx"]
+            dic["id"] = movie_id_list[i]
             dic["title"] = self.documents[dic["id"]]["title"]
             dic["document"] = self.documents[dic["id"]]["description"][:100]
-            dic["score"] = round(chunk_scores[i]["score"], SCORE_PRECISION)
+            dic["score"] = round(movie_score_list[i], SCORE_PRECISION)
             dic["metadata"] = self.chunk_metadata[dic["id"]]
             results.append(dic)
         
