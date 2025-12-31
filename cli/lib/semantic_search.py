@@ -1,4 +1,5 @@
 from sentence_transformers import SentenceTransformer
+from constants import *
 import numpy as np
 import os, json, re
 
@@ -192,9 +193,48 @@ class ChunkedSemanticSearch(SemanticSearch):
             self.chunk_embeddings = np.load(file)
         
         with open("cache/chunk_metadata.json", "r") as file:
-            self.chunk_metadata = json.load(file)
+            self.chunk_metadata = json.load(file)["chunks"]
         
         return self.chunk_embeddings
+    
+    def search_chunks(self, query: str, limit: int = 10):
+        embedded_query = embed_query_text(query)
+        chunk_scores = []
+
+        for i in range(len(self.chunk_embeddings)):
+            dic = {}
+            cosine = cosine_similarity(embedded_query, self.chunk_embeddings[i])
+            dic["chunk_idx"] = self.chunk_metadata[i]["chunk_idx"]
+            dic["movie_idx"] = self.chunk_metadata[i]["movie_idx"]
+            dic["score"] = cosine
+            chunk_scores.append(dic)
+        
+        movie_scores = {}
+
+        for chunk_score in chunk_scores:
+            if chunk_score["movie_idx"] not in movie_scores:
+                movie_scores[chunk_score["movie_idx"]] = chunk_score["score"]
+            else:
+                if chunk_score["score"] > movie_scores[chunk_score["movie_idx"]]:
+                    movie_scores[chunk_score["movie_idx"]] = chunk_score["score"]
+
+        chunk_scores.sort(key = lambda x: x["score"], reverse=True)
+
+        results = []
+        result_len = limit
+        if len(chunk_scores) < limit:
+            result_len = len(chunk_scores)
+
+        for i in range(result_len):
+            dic = {}
+            dic["id"] = chunk_scores[i]["movie_idx"]
+            dic["title"] = self.documents[dic["id"]]["title"]
+            dic["document"] = self.documents[dic["id"]]["description"][:100]
+            dic["score"] = round(chunk_scores[i]["score"], SCORE_PRECISION)
+            dic["metadata"] = self.chunk_metadata[dic["id"]]
+            results.append(dic)
+        
+        return results
     
 def semantic_chunk(text, chunk_size, overlap):
 
