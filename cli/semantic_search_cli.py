@@ -123,21 +123,17 @@ def main():
 
         case "semantic_chunk":
 
-            words = re.split(r"(?<=[.!?])\s+", args.text)
             chunk_size = args.max_chunk_size
             overlap = args.overlap
-            count = 1
+            text = args.text
 
             print(f"Semantically chunking {len(args.text)} characters")
 
-            for i in range(0, len(words), chunk_size-overlap):
+            chunks = semantic_chunk(text, chunk_size, overlap)
 
-                if i + chunk_size - overlap >= len(words) - 1:
-                    print(f"{count}.", " ".join(words[i:]))
-                    break
+            for i in range(len(chunks)):
 
-                print(f"{count}.", " ".join(words[i:i + chunk_size]))
-                count += 1
+                print(f"{i+1}.", chunks[i])
             
             pass
 

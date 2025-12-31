@@ -237,18 +237,28 @@ class ChunkedSemanticSearch(SemanticSearch):
         return results
     
 def semantic_chunk(text, chunk_size, overlap):
+    
+    text = text.strip()
+    if text == "" or text == None:
+        return []
 
     words = re.split(r"(?<=[.!?])\s+", text)
-    count = 1
+
+    if len(words) == 1 and not words[0].endswith((".", "!", "?")):
+        return [words[0].strip()]
+    
     chunks = []
 
     for i in range(0, len(words), chunk_size-overlap):
 
-        if i + chunk_size - overlap >= len(words) - 1:
-            chunks.append(" ".join(words[i:]))
-            break
+        new_chunk = ""
 
-        chunks.append(" ".join(words[i:i + chunk_size]))
-        count += 1
+        if i + chunk_size - overlap >= len(words) - 1:
+            new_chunk = " ".join(words[i:]).strip()
+        else:
+            new_chunk = " ".join(words[i:i + chunk_size]).strip()
+
+        if new_chunk != "" and new_chunk != None:
+            chunks.append(new_chunk)
     
     return chunks
