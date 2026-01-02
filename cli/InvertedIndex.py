@@ -153,4 +153,16 @@ class InvertedIndex:
         
         scores = dict(sorted(scores.items(), key=lambda item: item[1], reverse=True))
 
-        return dict(list(scores.items())[:limit])
+        result_len = limit
+
+        if limit > len(scores):
+            result_len = len(scores)
+
+        result_ids = list(scores.keys())
+        result_scores = list(scores.values())
+        result_dict = {}
+
+        for i in range(result_len):
+            result_dict[result_ids[i]] = result_scores[i]
+
+        return result_dict
