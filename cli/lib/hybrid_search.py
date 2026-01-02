@@ -71,7 +71,48 @@ class HybridSearch:
         
 
     def rrf_search(self, query, k, limit=10):
-        raise NotImplementedError("RRF hybrid search is not implemented yet.")
+        bm25_results = self._bm25_search(query, limit*500)
+        semantic_results = self.semantic_search.search_chunks(query, limit*500)
+
+        score_dict = {}
+
+        keyword_ids = list(bm25_results.keys())
+
+        for i in range(len(keyword_ids)):
+            dic = {}
+            dic["doc"] = self.idx.docmap[keyword_ids[i]]
+            dic["keyword_rank"] = i+1
+            dic["semantic_rank"] = "unranked"
+            dic["rrf_score"] = rrf_score(i+1, k)
+
+            score_dict[keyword_ids[i]] = dic
+
+        for i in range(len(semantic_results)):
+            movie_id = self.documents[semantic_results[i]["id"]]["id"]
+
+            if movie_id in score_dict:
+                score_dict[movie_id]["semantic_rank"] = i+1
+                score_dict[movie_id]["rrf_score"] += rrf_score(i+1, k)
+            else:
+                dic = {}
+                dic["doc"] = self.idx.docmap[movie_id]
+                dic["keyword_rank"] = "unranked"
+                dic["semantic_rank"] = i + 1
+                dic["rrf_score"] = rrf_score(i+1, k)
+
+                score_dict[movie_id] = dic
+
+        sorted_results = sorted(
+            score_dict.values(),
+            key=lambda item: item["rrf_score"],
+            reverse=True)
+        
+        return_len = limit
+
+        if limit > len(sorted_results):
+            return_len = len(sorted_results)
+            
+        return sorted_results[:return_len]
 
 def normalize_scores(scores):
     min_score = min(scores)
