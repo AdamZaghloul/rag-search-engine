@@ -18,6 +18,12 @@ def main() -> None:
     rrf_search_parser.add_argument("query", type=str, help="Search query")
     rrf_search_parser.add_argument("--k", type=int, nargs='?', default=60, help="Optional .")
     rrf_search_parser.add_argument("--limit", type=int, nargs='?', default=5, help="Optional maximum number of results.")
+    rrf_search_parser.add_argument(
+        "--enhance",
+        type=str,
+        choices=["spell"],
+        help="Query enhancement method",
+    )
 
     args = parser.parse_args()
 
@@ -55,6 +61,15 @@ def main() -> None:
                 data = json.load(file)
             
             model = lib.hybrid_search.HybridSearch(data["movies"])
+
+            query = args.query
+
+            match args.enhance:
+                case "spell":
+                    pass
+                case _:
+                    pass
+
 
             results = model.rrf_search(args.query, args.k, args.limit)
 
