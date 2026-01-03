@@ -2,6 +2,8 @@ import os
 
 from InvertedIndex import InvertedIndex
 from .semantic_search import ChunkedSemanticSearch
+from google import genai
+from dotenv import load_dotenv
 
 
 class HybridSearch:
@@ -137,3 +139,15 @@ def hybrid_score(bm25_score, semantic_score, alpha=0.5):
 
 def rrf_score(rank, k=60):
     return 1 / (k + rank)
+
+def llm_query(query):
+    load_dotenv()
+    api_key = os.environ.get("GEMINI_API_KEY")
+
+    client = genai.Client(api_key=api_key)
+
+    response = client.models.generate_content(
+        model='gemini-2.0-flash-001', 
+        contents=query,)
+
+    return response.text
