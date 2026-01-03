@@ -1,5 +1,6 @@
-import argparse, json
+import argparse, json, time
 import lib.hybrid_search
+from sentence_transformers import CrossEncoder
 
 
 def main() -> None:
@@ -23,6 +24,12 @@ def main() -> None:
         type=str,
         choices=["spell", "rewrite", "expand"],
         help="Query enhancement method",
+    )
+    rrf_search_parser.add_argument(
+        "--rerank-method",
+        type=str,
+        choices=["individual", "batch", "cross_encoder"],
+        help="Query LLM rerank method",
     )
 
     args = parser.parse_args()
@@ -131,12 +138,126 @@ def main() -> None:
                 case _:
                     pass
 
+            limit = args.limit
+            
+            match args.rerank_method:
+                case "individual" | "batch" | "cross_encoder":
+                    limit *= 5
+                    pass
+                case _:
+                    pass
 
             results = model.rrf_search(query, args.k, args.limit)
+            final_results = []
+
+            match args.rerank_method:
+                case "individual":
+
+                    for i in range(len(results)):
+                        llm_query = f"""Rate how well this movie matches the search query.
+
+                            Query: "{query}"
+                            Movie: {results[i]["doc"].get("title", "")} - {results[i]["doc"].get("description", "")}
+
+                            Consider:
+                            - Direct relevance to query
+                            - User intent (what they're looking for)
+                            - Content appropriateness
+
+                            Rate 0-10 (10 = perfect match).
+                            Give me ONLY the number in your response, no other text or explanation.
+
+                            Score:"""
+                        
+                        results[i]["rerank_score"] = int(lib.hybrid_search.llm_query(llm_query))
+                        time.sleep(3)
+                    
+                    sorted_results = sorted(
+                        results,
+                        key=lambda item: item["rerank_score"],
+                        reverse=True)
+                    
+                    return_len = args.limit
+
+                    if limit > len(sorted_results):
+                        return_len = len(sorted_results)
+
+                    final_results = sorted_results[:return_len]
+
+                    print(f"Reranking top {args.limit} results using {args.rerank_method} method...")
+
+                    pass
+                case "batch":
+                    doc_list_str = ""
+                    for i in range(len(results)):
+                        doc_list_str += f"ID: {results[i]['doc'].get('id', '')} - {results[i]['doc'].get('title', '')} - {results[i]['doc'].get('description', '')}\n\n"
+
+                    llm_query = f"""Rank these movies by relevance to the search query.
+
+                        Query: "{query}"
+
+                        Movies:
+                        {doc_list_str}
+
+                        Return ONLY the IDs in order of relevance (best match first). Return a valid JSON list, nothing else. For example:
+
+                        [75, 12, 34, 2, 1]
+                        """
+
+                    batch_order = json.loads(lib.hybrid_search.llm_query(llm_query))
+                    result_len = 0
+
+                    for i in range(len(batch_order)):
+                        for j in range(len(results)):
+                            if batch_order[i] == results[j]['doc']['id']:
+                                results[j]['rerank_score'] = i+1
+                                final_results.append(results[j])
+                                result_len += 1
+                                break
+                        if result_len >= args.limit:
+                            break
+                    print(f"Reranking top {args.limit} results using {args.rerank_method} method...")
+                case "cross_encoder":
+                    pairs = []
+
+                    for i in range(len(results)):
+                        pairs.append([query, f"{results[i]['doc'].get('title', '')} - {results[i]['doc'].get('description', '')}"])
+
+                    cross_encoder = CrossEncoder("cross-encoder/ms-marco-TinyBERT-L2-v2")
+                    scores = cross_encoder.predict(pairs)
+
+                    for i in range(len(scores)):
+                        results[i]['rerank_score'] = scores[i]
+
+                    sorted_results = sorted(
+                        results,
+                        key=lambda item: item["rerank_score"],
+                        reverse=True)
+                    
+                    return_len = args.limit
+
+                    if limit > len(sorted_results):
+                        return_len = len(sorted_results)
+
+                    final_results = sorted_results[:return_len]
+
+                    print(f"Reranking top {args.limit} results using {args.rerank_method} method...")
+
+                    pass
+                case _:
+                    final_results = results
+                    pass
 
             count = 1
-            for res in results:
+            for res in final_results:
                 print(f"{count}.\t{res['doc']['title']}")
+
+                match args.rerank_method:
+                    case "individual" | "batch" | "cross_encoder":
+                        print(f"\t\tRerank Score: {res['rerank_score']}/10")
+                    case _:
+                        pass
+
                 print(f"\t\tRRF Score: {res['rrf_score']:.4f}")
                 print(f"\t\tBM25 Rank: {res['keyword_rank']}, Semantic Rank: {res['semantic_rank']}")
                 print(f"\t\t{res['doc']['description'][:100]}...")
@@ -144,7 +265,7 @@ def main() -> None:
                 count += 1
             
             pass
-        
+                   
         case _:
             parser.print_help()
 
