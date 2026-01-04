@@ -72,7 +72,7 @@ class HybridSearch:
         return sorted_results[:result_len]    
         
 
-    def rrf_search(self, query, k, limit=10):
+    def rrf_search(self, query, k=60, limit=10):
         bm25_results = self._bm25_search(query, limit*500)
         semantic_results = self.semantic_search.search_chunks(query, limit*500)
 
