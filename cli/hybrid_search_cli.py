@@ -12,7 +12,7 @@ def main() -> None:
 
     weighted_search_parser = subparsers.add_parser("weighted-search", help="Search movies using a weighted keyword and chunked semantic search.")
     weighted_search_parser.add_argument("query", type=str, help="Search query")
-    weighted_search_parser.add_argument("--alpha", type=float, nargs='?', default=0.5, help="Optional .")
+    weighted_search_parser.add_argument("--alpha", type=float, nargs='?', default=0.5, help="Optional weighting factor for keyword vs semantic search.")
     weighted_search_parser.add_argument("--limit", type=int, nargs='?', default=5, help="Optional maximum number of results.")
 
     rrf_search_parser = subparsers.add_parser("rrf-search", help="Search movies using a weighted keyword and chunked semantic search.")
@@ -31,6 +31,8 @@ def main() -> None:
         choices=["individual", "batch", "cross_encoder"],
         help="Query LLM rerank method",
     )
+    rrf_search_parser.add_argument("--evaluate", action=argparse.BooleanOptionalAction)
+    rrf_search_parser.add_argument("--verbose", action=argparse.BooleanOptionalAction)
 
     args = parser.parse_args()
 
@@ -70,6 +72,11 @@ def main() -> None:
             model = lib.hybrid_search.HybridSearch(data["movies"])
 
             query = args.query
+
+            if args.verbose:
+                print()
+                print("Original Query:")
+                print(query)
 
             match args.enhance:
                 case "spell":
@@ -140,6 +147,11 @@ def main() -> None:
 
             limit = args.limit
             
+            if args.verbose:
+                print()
+                print("Enhanced Query:")
+                print(query)
+            
             match args.rerank_method:
                 case "individual" | "batch" | "cross_encoder":
                     limit *= 5
@@ -147,7 +159,13 @@ def main() -> None:
                 case _:
                     pass
 
-            results = model.rrf_search(query, args.k, args.limit)
+            results = model.rrf_search(query, args.k, limit)
+            
+            if args.verbose:
+                print()
+                print("RRF Search Results:")
+                print(json.dumps(results, indent=4))
+
             final_results = []
 
             match args.rerank_method:
@@ -248,6 +266,12 @@ def main() -> None:
                     final_results = results
                     pass
 
+            print()
+            
+            if args.verbose:
+                print("Final Results:")
+
+            formatted_results = []
             count = 1
             for res in final_results:
                 print(f"{count}.\t{res['doc']['title']}")
@@ -262,7 +286,33 @@ def main() -> None:
                 print(f"\t\tBM25 Rank: {res['keyword_rank']}, Semantic Rank: {res['semantic_rank']}")
                 print(f"\t\t{res['doc']['description'][:100]}...")
                 print()
+                formatted_results.append(f"{count}. {res['doc']['title']}")
                 count += 1
+            
+            if args.evaluate:
+                llm_query = f"""Rate how relevant each result is to this query on a 0-3 scale:
+
+                    Query: "{query}"
+
+                    Results:
+                    {chr(10).join(formatted_results)}
+
+                    Scale:
+                    - 3: Highly relevant
+                    - 2: Relevant
+                    - 1: Marginally relevant
+                    - 0: Not relevant
+
+                    Do NOT give any numbers out than 0, 1, 2, or 3.
+
+                    Return ONLY the scores in the same order you were given the documents. Return a valid JSON list, nothing else. For example:
+
+                    [2, 0, 3, 2, 0, 1]"""
+                
+                evaluation = json.loads(lib.hybrid_search.llm_query(llm_query))
+
+                for i in range(len(evaluation)):
+                    print(f"{formatted_results[i]}: {evaluation[i]}/3")
             
             pass
                    
