@@ -149,5 +149,7 @@ def llm_query(query):
     response = client.models.generate_content(
         model='gemini-2.0-flash-001', 
         contents=query,)
+    
+    print(f"Total tokens:    {response.usage_metadata.total_token_count}")
 
     return response.text
