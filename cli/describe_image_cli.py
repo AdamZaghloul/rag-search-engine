@@ -3,7 +3,7 @@ import lib.hybrid_search as hybrid_search
 import google.genai.types as types
 
 def main():
-    parser = argparse.ArgumentParser(description="Retrieval Augmented Generation CLI")
+    parser = argparse.ArgumentParser(description="Describe Image CLI")
 
     parser.add_argument("--image", type=str, help="Path to image file.")
     parser.add_argument("--query", type=str, help="Text query to rewrite based on the image.")
